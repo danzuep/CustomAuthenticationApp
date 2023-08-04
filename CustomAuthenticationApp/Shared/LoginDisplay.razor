@@ -1,0 +1,42 @@
+﻿@inject NavigationManager navigationManager
+@inject IAuthenticationService authenticationService
+@inject ILogger<LoginDisplay> logger
+
+<AuthorizeView>
+    <Authorized>
+        <button type="button" class=@buttonClass @onclick="@OnClickUserProfile">Logged in as @context.User.Identity?.Name.</button>
+        <button type="button" class=@buttonClass @onclick="@OnClickLogOut">Log out.</button>
+    </Authorized>
+    <NotAuthorized>
+        <a href="authentication/register" class="navbar-item">Register</a>
+        <button type="button" class=@buttonClass @onclick="OnLoginClick">Login</button>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    private static readonly string buttonClass = "btn btn-link navbar-item";
+
+    void OnClickUserProfile()
+    {
+        navigationManager.NavigateTo("authentication/profile");
+    }
+
+    void OnLoginClick()
+    {
+        navigationManager.NavigateTo("authentication/login");
+    }
+
+    async Task OnClickLogOut()
+    {
+        if (authenticationState != null)
+        {
+            var identity = (await authenticationState).User.Identity;
+            logger.LogDebug($"User {identity?.Name} is logging out.");
+        }
+        await authenticationService.LogoutAsync();
+        navigationManager.NavigateTo("authentication/logout");
+    }
+}

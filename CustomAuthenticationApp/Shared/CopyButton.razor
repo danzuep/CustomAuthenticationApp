@@ -1,0 +1,50 @@
+﻿@inject IClipboardService ClipboardService
+
+<button @onclick=@OnClick class=@buttonClass>@buttonText</button>
+
+@code {
+    [Parameter]
+    public string? TextToCopy { get; set; }
+
+    [Parameter]
+    public string? Style { get; set; }
+
+    [Parameter]
+    public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(2);
+
+    private const string _copyToClipboardText = "Copy";
+    private const string _copiedToClipboardText = "Copied!";
+
+    internal const string DefaultClass = "btn btn-primary";
+    internal const string SuccessClass = "btn btn-success";
+
+    private string buttonText;
+    private string buttonClass;
+
+    public CopyButton()
+    {
+        buttonText = _copyToClipboardText;
+        buttonClass = string.IsNullOrWhiteSpace(Style) ?
+            DefaultClass : $"{DefaultClass} {Style}";
+    }
+
+    private void UpdateButtonStyle(string style)
+    {
+        buttonClass = string.IsNullOrWhiteSpace(Style) ?
+            style : $"{style} {Style}";
+    }
+
+    private async Task OnClick()
+    {
+        await ClipboardService.CopyAsync(TextToCopy);
+
+        buttonText = _copiedToClipboardText;
+        UpdateButtonStyle(SuccessClass);
+
+        StateHasChanged();
+        await Task.Delay(Delay);
+
+        buttonText = _copyToClipboardText;
+        UpdateButtonStyle(DefaultClass);
+    }
+}

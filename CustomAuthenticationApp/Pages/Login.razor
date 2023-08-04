@@ -1,0 +1,68 @@
+﻿@page "/authentication/login"
+@attribute [AllowAnonymous]
+@inject NavigationManager navigationManager
+@inject IAuthenticationService authenticationService
+
+<PageTitle>Login</PageTitle>
+
+<div class="container mt-md-5">
+    <div class="row justify-content-md-center">
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="h2 text-center">Login</h1>
+                </div>
+                <div class="card-body">
+                    <EditForm class="form-signin" OnValidSubmit="OnSubmit" Model="loginCredential">
+                        <DataAnnotationsValidator />
+
+                        <div class="form-floating mb-3">
+                            <InputText @ref=inputTextUsername id="inputUsername" class="form-control" placeholder="Username" @bind-Value="loginCredential.Username" />
+                            <label for="inputUsername">User Name</label>
+                            <ValidationMessage For="@(() => loginCredential.Username)" />
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <InputText type="password" id="inputPassword" class="form-control" placeholder="Password" @bind-Value="loginCredential.Password" />
+                            <label for="inputPassword">Password</label>
+                            <ValidationMessage For="@(() => loginCredential.Password)" />
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+                        </div>
+
+                        <label class="text-danger">@error</label>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    string? error { get; set; }
+    private InputText? inputTextUsername;
+    LoginCredential loginCredential { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender && inputTextUsername?.Element != null)
+            await inputTextUsername.Element.Value.FocusAsync();
+    }
+
+    private async Task OnSubmit()
+    {
+        error = null;
+        try
+        {
+            await authenticationService.LoginAsync(loginCredential);
+            navigationManager.NavigateTo("search");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+}

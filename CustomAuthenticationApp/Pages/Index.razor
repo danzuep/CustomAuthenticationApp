@@ -1,0 +1,74 @@
+﻿@page "/"
+@layout MainLayout
+@attribute [AllowAnonymous]
+@inject IStorageAccessor storage
+@inject IWebAssemblyHostEnvironment environment
+@inject IJSRuntime jsRuntime
+
+<PageTitle>Index</PageTitle>
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="h2 text-center">Token</h1>
+    </div>
+    <div class="card-body">
+        <button class=@buttonClass @onclick=@OnClickGet>Get Token</button>
+        <input type="text" placeholder="Token" @ref="autofocusInput" @bind=@Token @onkeydown=@OnEnterRedraw />
+        <button class=@buttonClass @onclick=@OnClickSet>Set Token</button>
+        <button class=@buttonClass @onclick=@OnClickDecode>Decode Token</button>
+        <button class=@buttonClass @onclick=@OnClickDelete>Delete Token</button>
+        <button class=@buttonClass @onclick=@OnClickClear>Clear Storage</button>
+    </div>
+</div>
+
+@code {
+    private static readonly string buttonClass = "btn btn-primary";
+
+    private string? Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+
+    private ElementReference? autofocusInput;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            if (autofocusInput != null)
+                await autofocusInput.Value.FocusAsync();
+            if (environment.IsDevelopment())
+                await OnClickSet();
+        }
+    }
+
+    private async Task OnClickGet()
+    {
+        Token = await storage.GetTokenValueAsync();
+    }
+
+    private async Task OnClickSet()
+    {
+        await storage.SetTokenValueAsync(Token);
+    }
+
+    private async Task OnEnterRedraw(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+            await OnClickSet();
+    }
+
+    private async Task OnClickDecode()
+    {
+        await jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Token);
+        await jsRuntime.InvokeVoidAsync("window.open", "https://jwt.ms/", "_blank");
+    }
+
+    private async Task OnClickDelete()
+    {
+        await storage.RemoveTokenAsync();
+    }
+
+    private async Task OnClickClear()
+    {
+        await storage.ClearAllAsync();
+    }
+}
