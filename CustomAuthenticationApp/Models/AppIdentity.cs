@@ -11,6 +11,7 @@ public record AppIdentity : IIdentity
     protected static readonly ClaimsIdentity _defaultClaimsIdentity = new();
     protected ClaimsIdentity _claimsIdentity = _defaultClaimsIdentity;
     public ClaimsIdentity ClaimsIdentity => _claimsIdentity;
+    public ClaimsPrincipal User => new(_claimsIdentity);
 
     protected JwtSecurityToken? _token;
 
@@ -49,7 +50,12 @@ public record AppIdentity : IIdentity
     /// <summary>
     /// Gets the Name of this <see cref="AppIdentity"/>.
     /// </summary>
-    public virtual string? Name => _claimsIdentity.Name;
+    public virtual string? Name
+    {
+        get => _name ?? _claimsIdentity.Name;
+        protected set => _name = value;
+    }
+    private string? _name;
 
     /// <summary>
     /// Gets the authentication type that can be used to determine how this <see cref="ClaimsIdentity"/> authenticated to an authority.
@@ -72,11 +78,13 @@ public record AppIdentity : IIdentity
     {
     }
 
-    public AppIdentity(string? jwtEncodedString)
+    public AppIdentity(string? jwtEncodedString, string? name = null)
     {
         if (string.IsNullOrEmpty(jwtEncodedString))
             return;
         Jwt = jwtEncodedString;
+        if (!string.IsNullOrEmpty(name))
+            _name = name;
         try
         {
             _token = new JwtSecurityToken(jwtEncodedString);
@@ -106,5 +114,16 @@ public record AppIdentity : IIdentity
     protected void AddClaim(string claimType, DateTime claimValue)
     {
         _claims.Add(new Claim(claimType, claimValue.Subtract(DateTime.UnixEpoch).TotalSeconds.ToString()));
+    }
+
+    internal bool? GetIsExpiredFromClaimsIdentity()
+    {
+        var expiryClaim = _claimsIdentity.FindFirst(JwtRegisteredClaimNames.Exp) ??
+            _claimsIdentity.FindFirst(ClaimTypes.Expiration);
+        if (expiryClaim == null)
+            return null;
+        var expiry = double.TryParse(expiryClaim.Value, out double maxAge) ?
+            DateTime.UnixEpoch.AddSeconds(maxAge) : DateTime.UtcNow.AddDays(1);
+        return DateTime.UtcNow > expiry;
     }
 }

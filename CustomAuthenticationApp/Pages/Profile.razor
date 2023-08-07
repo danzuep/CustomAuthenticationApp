@@ -1,51 +1,59 @@
-﻿@page "/profile"
+﻿@page "/authentication/profile"
 @using System.Text.Json
 @using System.Security.Claims
 @layout MainLayout
-@inject AppAuthenticationStateProvider AppAuthentication
+@inject IAuthenticationService AuthenticatedUser
 @inject IJSRuntime JsRuntime
 
 <PageTitle>Profile</PageTitle>
 
 <div class="card">
     <div class="card-header">
-        <h1 class="h2 text-center">User Profile for <b>@AppAuthentication.Name</b></h1>
+        <h1 class="h2 text-center">User Profile for <b>@AuthenticatedUser.Identity.Name</b></h1>
     </div>
     <div class="card-body">
-        @if (AppAuthentication.Identity is AppIdentity appIdentity)
+        <b>User token:</b>
+        <input type="text" readonly value=@AuthenticatedUser.Identity.Jwt />
+        <CopyButton TextToCopy=@AuthenticatedUser.Identity.Jwt />
+        <button class=@CopyButton.DefaultClass @onclick=@OnClickDecode>Decode</button>
+        @if (AuthenticatedUser.Identity.ValidTo != null)
         {
-            <b>User token:</b>
-            <input type="text" readonly value=@appIdentity.Jwt />
-            <CopyButton TextToCopy=@appIdentity.Jwt />
-            <button class=@CopyButton.DefaultClass @onclick=@OnClickDecode>Decode</button>
-            @if (appIdentity.ValidTo != null)
-            {
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Current time</th>
-                            <th>Access token expiry</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>@DateTimeOffset.Now</td>
-                            <td>@appIdentity.ValidTo.Value.ToLocalTime()</td>
-                        </tr>
-                    </tbody>
-                </table>
-            }
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Current time</th>
+                        @if (AuthenticatedUser.Identity.ValidFrom.HasValue)
+                        {
+                            <th>Access token start</th>
+                        }
+                        <th>Access token expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>@DateTimeOffset.Now</td>
+                        @if (AuthenticatedUser.Identity.ValidFrom.HasValue)
+                        {
+                        <td>@AuthenticatedUser.Identity.ValidFrom.Value.ToLocalTime()</td>
+                        }
+                        <td>@AuthenticatedUser.Identity.ValidTo.Value.ToLocalTime()</td>
+                    </tr>
+                </tbody>
+            </table>
+        }
 
-            @if (appIdentity.Claims.Any())
+        @if (AuthenticatedUser.Identity.Claims.Any())
+        {
+            if (!string.IsNullOrEmpty(AuthenticatedUser.Identity.ClaimsIdentity.Name))
             {
-                if (!string.IsNullOrEmpty(appIdentity.Name))
-                {
-                    <h2>Full Name</h2>
-                    <ul><li>@appIdentity.Name</li></ul>
-                }
+                <h2>Profile Name</h2>
+                <ul><li>@AuthenticatedUser.Identity.ClaimsIdentity.Name</li></ul>
+            }
+            if (AuthenticatedUser.Identity.Roles.Any())
+            {
                 <h2>User Roles</h2>
                 <ul>
-                    @foreach (var role in appIdentity.Roles)
+                    @foreach (var role in AuthenticatedUser.Identity.Roles)
                     {
                         <li class="role">@role</li>
                     }
@@ -58,8 +66,7 @@
 @code {
     private async Task OnClickDecode()
     {
-        var appIdentity = (AppIdentity)AppAuthentication.Identity;
-        await JsRuntime.InvokeVoidAsync(ClipboardService.Copy, appIdentity.Jwt);
+        await JsRuntime.InvokeVoidAsync(CopyButton.Copy, AuthenticatedUser.Identity.Jwt);
         await JsRuntime.InvokeVoidAsync("window.open", "https://jwt.ms/", "_blank");
     }
 }

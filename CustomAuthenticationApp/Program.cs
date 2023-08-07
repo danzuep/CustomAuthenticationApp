@@ -3,7 +3,6 @@ using CustomAuthenticationApp.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using System.Globalization;
 
 namespace CustomAuthenticationApp
 {
@@ -35,7 +34,7 @@ public static class ServiceCollectionExtensions
         services.AddAuthorizationCore();
         services.AddScoped<AppAuthenticationStateProvider>();
         services.AddScoped<AuthenticationStateProvider>(s => s.GetRequiredService<AppAuthenticationStateProvider>());
-        services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IAuthenticationService, AppAuthenticationService>();
         services.AddMemoryCache();
         services.AddScoped<IStorageAccessor, StorageAccessor>();
         services.AddScoped<IStorageHandler, BrowserStorageHandler>();

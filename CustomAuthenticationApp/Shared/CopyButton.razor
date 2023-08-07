@@ -1,4 +1,4 @@
-﻿@inject IClipboardService ClipboardService
+﻿@inject IJSRuntime jsInterop
 
 <button @onclick=@OnClick class=@buttonClass>@buttonText</button>
 
@@ -11,6 +11,8 @@
 
     [Parameter]
     public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(2);
+
+    internal static readonly string Copy = "navigator.clipboard.writeText";
 
     private const string _copyToClipboardText = "Copy";
     private const string _copiedToClipboardText = "Copied!";
@@ -36,7 +38,7 @@
 
     private async Task OnClick()
     {
-        await ClipboardService.CopyAsync(TextToCopy);
+        await jsInterop.InvokeVoidAsync(Copy, TextToCopy);
 
         buttonText = _copiedToClipboardText;
         UpdateButtonStyle(SuccessClass);

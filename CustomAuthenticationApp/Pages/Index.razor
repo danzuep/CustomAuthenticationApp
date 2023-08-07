@@ -15,11 +15,14 @@
         <button class=@buttonClass @onclick=@OnClickGet>Get Token</button>
         <input type="text" placeholder="Token" @ref="autofocusInput" @bind=@Token @onkeydown=@OnEnterRedraw />
         <button class=@buttonClass @onclick=@OnClickSet>Set Token</button>
-        <button class=@buttonClass @onclick=@OnClickDecode>Decode Token</button>
         <button class=@buttonClass @onclick=@OnClickDelete>Delete Token</button>
         <button class=@buttonClass @onclick=@OnClickClear>Clear Storage</button>
     </div>
 </div>
+
+<br />
+
+<Profile />
 
 @code {
     private static readonly string buttonClass = "btn btn-primary";
@@ -35,8 +38,8 @@
         {
             if (autofocusInput != null)
                 await autofocusInput.Value.FocusAsync();
-            if (environment.IsDevelopment())
-                await OnClickSet();
+            //if (environment.IsDevelopment())
+            //    await storage.SetTokenValueAsync(Token);
         }
     }
 

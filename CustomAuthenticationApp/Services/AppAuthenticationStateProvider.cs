@@ -1,9 +1,7 @@
 ﻿namespace CustomAuthenticationApp.Services;
 
 using Microsoft.AspNetCore.Components.Authorization;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Principal;
 using CustomAuthenticationApp.Abstractions;
 using CustomAuthenticationApp.Models;
 
@@ -20,96 +18,79 @@ public sealed class AppAuthenticationStateProvider : AuthenticationStateProvider
         _browserStorage = browserStorage;
     }
 
+    private static readonly AppIdentity _defaultIdentity = new();
     private static readonly ClaimsIdentity _defaultClaimsIdentity = new();
     private static readonly ClaimsPrincipal _defaultClaimsPrincipal = new(_defaultClaimsIdentity);
     private static readonly AuthenticationState _defaultAuthenticationState = new(_defaultClaimsPrincipal);
     private static readonly Task<AuthenticationState> _defaultAuthenticationStateTask = Task.FromResult(_defaultAuthenticationState);
 
-    public string? Name => _claimsIdentity.Name;
-    private ClaimsIdentity _claimsIdentity = _defaultClaimsIdentity;
-    private ClaimsPrincipal _claimsPrincipal => new(_claimsIdentity);
+    private AppIdentity _identity = _defaultIdentity;
+    internal AppIdentity Identity => _identity;
+    private ClaimsPrincipal _claimsPrincipal => _identity.User;
     private AuthenticationState _authenticationState => new(_claimsPrincipal);
-    public ClaimsPrincipal User => _claimsPrincipal;
-
-    private AppIdentity? _identity;
-    internal IIdentity Identity => _identity ?? new();
-
-    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
-    {
-        if (!_claimsIdentity.IsAuthenticated)
-        {
-            var appIdentity = await GetAppIdentityAsync();
-            if (appIdentity == null || !appIdentity.IsAuthenticated || appIdentity.Error != null)
-            {
-                _logger.LogInformation(appIdentity?.Error, "Authentication did not succeed for user '{Name}'.", appIdentity?.Name);
-                _claimsIdentity = _defaultClaimsIdentity;
-                return _defaultAuthenticationState;
-            }
-            _claimsIdentity = appIdentity.ClaimsIdentity;
-        }
-        var expiryClaim = _claimsIdentity.FindFirst(JwtRegisteredClaimNames.Exp) ??
-            _claimsIdentity.FindFirst(ClaimTypes.Expiration);
-        var expiry = double.TryParse(expiryClaim?.Value, out double maxAge) ?
-            DateTime.UnixEpoch.AddSeconds(maxAge) : DateTime.UtcNow.AddDays(1);
-        if (expiryClaim == null || DateTime.UtcNow > expiry)
-        {
-            _logger.LogDebug("Authentication has expired for user '{Name}'.", Name);
-            _claimsIdentity = _defaultClaimsIdentity;
-            await _browserStorage.RemoveTokenAsync(CancellationToken.None);
-            return _defaultAuthenticationState;
-        }
-        _logger.LogDebug("{Name} authenticated.", Name);
-        return _authenticationState;
-    }
+    public string? Name => _identity.Name;
 
     public async Task<AppIdentity> GetAppIdentityAsync(CancellationToken cancellationToken = default) =>
         new AppIdentity(await _browserStorage.GetTokenValueAsync(cancellationToken));
 
-    public Task SetAppIdentityAsync(AppIdentity? appIdentity, CancellationToken cancellationToken = default) =>
+    public Task SetTokenValueAsync(AppIdentity? appIdentity, CancellationToken cancellationToken = default) =>
         _browserStorage.SetTokenValueAsync(appIdentity?.Jwt, appIdentity?.ValidTo, cancellationToken);
 
-    private void Login(ClaimsIdentity? claimsIdentity)
+    private async Task<bool> IsTokenExpiredAsync()
     {
-        if (string.IsNullOrWhiteSpace(claimsIdentity?.Name))
-            throw new AuthorizationException("Authentication did not succeed, no name was given.");
-        _claimsIdentity = claimsIdentity;
-        _logger.LogDebug("User attempting to login: {User}.", Name);
-        if (!_claimsIdentity.IsAuthenticated || Name == null)
-            throw new AuthorizationException($"Authentication did not succeed for user '{Name}'.");
-        var expiryClaim = _claimsIdentity.FindFirst(JwtRegisteredClaimNames.Exp) ??
-            _claimsIdentity.FindFirst(ClaimTypes.Expiration);
-        var expiry = double.TryParse(expiryClaim?.Value, out double maxAge) ?
-            DateTime.UnixEpoch.AddSeconds(maxAge) : DateTime.UtcNow.AddDays(1);
-        //await _browserStorage.SetTokenValueAsync(_claimsIdentity, expiry, cancellationToken);
-        if (expiryClaim == null || DateTime.UtcNow > expiry)
-            throw new AuthorizationException($"Authentication no longer valid for user '{Name}'.");
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        _identity = await GetAppIdentityAsync() ?? _defaultIdentity;
+        if (_identity == null || !_identity.IsAuthenticated || _identity.Error != null)
+        {
+            var isExpired = _identity?.GetIsExpiredFromClaimsIdentity();
+            if (isExpired.HasValue && isExpired.Value == true)
+            {
+                if (isExpired.HasValue)
+                    _logger.LogDebug("Authentication has expired for user \"{Name}\".", Name);
+                _logger.LogInformation(_identity?.Error, "Authentication did not succeed for user \"{Name}\".", _identity?.Name);
+                _identity = _defaultIdentity;
+                await _browserStorage.RemoveTokenAsync(CancellationToken.None);
+                return true;
+            }
+        }
+        _logger.LogDebug("{Name} authenticated.", Name);
+        return false;
     }
 
-    public void Login(IIdentity? identity, IEnumerable<Claim>? claims = null)
+    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        if (identity == null)
-            throw new ArgumentNullException(nameof(identity));
-        if (string.IsNullOrWhiteSpace(identity?.Name))
-            throw new AuthorizationException("Authentication did not succeed, no name was given.");
-        if (identity is ClaimsIdentity claimsIdentity)
-            _claimsIdentity = claimsIdentity;
-        else if (claims != null)
-            _claimsIdentity = new ClaimsIdentity(identity, claims);
-        else
-            _claimsIdentity = new(identity);
-        Login(_claimsIdentity);
+        if (!_identity.IsAuthenticated && await IsTokenExpiredAsync())
+            return _defaultAuthenticationState;
+        return _authenticationState;
     }
 
     public async Task LoginAsync(AppIdentity identity, CancellationToken cancellationToken = default)
     {
-        await SetAppIdentityAsync(identity, cancellationToken);
-        Login(identity?.ClaimsIdentity);
+        if (string.IsNullOrWhiteSpace(identity?.Name))
+            throw new AuthorizationException("Authentication did not succeed, no name was supplied.");
+        string name = identity.Name;
+        _logger.LogDebug("User attempting to login: {Name}.", name);
+        if (!identity.IsAuthenticated)
+            throw new AuthorizationException($"Authentication did not succeed for user \"{name}\".");
+        var claimsIdentity = identity.ClaimsIdentity;
+        if (claimsIdentity == null)
+            throw new AuthorizationException("Authentication did not succeed, not a user.");
+        if (!claimsIdentity.IsAuthenticated)
+            throw new AuthorizationException($"Authentication did not succeed for user \"{name}\".");
+        if (string.IsNullOrWhiteSpace(claimsIdentity?.Name))
+            throw new AuthorizationException("Authentication did not succeed, user claim has no name.");
+        var isExpired = identity.GetIsExpiredFromClaimsIdentity();
+        if (!isExpired.HasValue)
+            _logger.LogDebug("Authentication identity has no expiry for user \"{Name}\".", name);
+        else if (isExpired != false)
+            throw new AuthorizationException($"Authentication did not succeed for user \"{name}\", token expired.");
+        _identity = identity;
+        await SetTokenValueAsync(identity, cancellationToken);
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
     public async Task LogoutAsync(CancellationToken cancellationToken = default)
     {
-        _claimsIdentity = _defaultClaimsIdentity;
+        _identity = _defaultIdentity;
         await _browserStorage.RemoveTokenAsync(cancellationToken);
         NotifyAuthenticationStateChanged(_defaultAuthenticationStateTask);
     }

@@ -58,7 +58,7 @@
         try
         {
             await authenticationService.LoginAsync(loginCredential);
-            navigationManager.NavigateTo("search");
+            navigationManager.NavigateTo("/authentication/profile");
         }
         catch (Exception ex)
         {
