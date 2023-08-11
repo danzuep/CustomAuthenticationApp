@@ -28,6 +28,26 @@
     }
 };
 
+window.triggerFileDownload = (fileName, url) => {
+    const anchorElement = document.createElement('a');
+    anchorElement.href = url;
+    anchorElement.download = fileName ?? '';
+    anchorElement.click();
+    anchorElement.remove();
+};
+
+window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+    const arrayBuffer = await contentStreamReference.arrayBuffer();
+    const blob = new Blob([arrayBuffer]);
+    const url = URL.createObjectURL(blob);
+    const anchorElement = document.createElement('a');
+    anchorElement.href = url;
+    anchorElement.download = fileName ?? '';
+    anchorElement.click();
+    anchorElement.remove();
+    URL.revokeObjectURL(url);
+};
+
 window.cookieStorage = {
     get: (name) => {
         const cookieMatch = document.cookie.match(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`);
@@ -54,6 +74,13 @@ window.cookieStorage = {
             const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
             document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
         }
+    },
+    eventListener: (componentRef) => {
+        const handleCookieChange = async () => {
+            await componentRef.invokeMethodAsync("OnStorageUpdated", document.cookie);
+        };
+        document.addEventListener("cookiechange", handleCookieChange);
+        document.addEventListener("cookieupdate", handleCookieChange);
     }
 };
 
@@ -73,12 +100,38 @@ window.storeLocally = {
     },
     clear: () => {
         window.localStorage.clear();
+    },
+    eventListener: (componentRef) => {
+        window.addEventListener("storage", async e => {
+            await componentRef.invokeMethodAsync("OnStorageUpdated", e.key);
+        });
     }
 };
 
-window.getDimensions = function () {
-    return {
-        width: window.innerWidth,
-        height: window.innerHeight
-    };
+window.dimensions = {
+    throttleResizeHandlerId: -1,
+    get: function () {
+        return {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+    },
+    eventListener: function (componentRef, reportRate) {
+        const throttledResize = async () => {
+            const handleResize = async () => {
+                await componentRef.invokeMethodAsync("OnWindowDimensionsUpdated", window.dimensions.get());
+            };
+            clearTimeout(window.dimensions.throttleResizeHandlerId);
+            window.dimensions.throttleResizeHandlerId = window.setTimeout(handleResize, reportRate);
+        };
+        window.addEventListener("resize", throttledResize);
+    },
+    cancelListener: function () {
+        clearTimeout(window.dimensions.throttleResizeHandlerId);
+        window.removeEventListener("resize", window.dimensions.eventListener);
+    },
+    matchMedia: function (query) {
+        var m = window.matchMedia(query).matches;
+        return m;
+    },
 };

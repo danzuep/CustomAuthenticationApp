@@ -1,35 +1,65 @@
 ﻿namespace CustomAuthenticationApp.Services;
 
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.JSInterop;
 using CustomAuthenticationApp.Abstractions;
+using Microsoft.JSInterop;
 
 // Inspired by https://github.com/enkodellc/blazorboilerplate/blob/master/src/Shared/BlazorBoilerplate.Shared/Extensions/IJSRuntimeExtensions.cs
-public class BrowserStorageHandler : IStorageHandler
+public class StoreBrowserHandler : IStoreBrowserHandler
 {
+    private Action<string?>? _action;
     private readonly IStorageHandler _memoryStorage;
     private readonly IJSRuntime _jsRuntime;
 
-    public BrowserStorageHandler(IJSRuntime jsRuntime, IMemoryCache memoryCache)
+    public StoreBrowserHandler(IJSRuntime jsRuntime, IStorageHandler memoryStorage)
     {
         _jsRuntime = jsRuntime;
-        _memoryStorage = new MemoryStorageHandler(memoryCache);
+        _memoryStorage = memoryStorage;
     }
 
-    private BrowserStorageAccessorOptions StorageOptions =
+    private BrowserStorageAccessorOptions _storageOptions =
         new(BrowserStorageType.Cookies, TimeSpan.FromDays(1));
 
     public void SetOptions(StorageAccessorOptions? options)
     {
         if (options is BrowserStorageAccessorOptions browserStorage)
-            StorageOptions = browserStorage;
+            _storageOptions = browserStorage;
+    }
+
+    /// <summary>
+    /// Subscribe to the storage/cookie event. This will do work when a key-value changes.
+    /// </summary>
+    public async Task StartAsync(Action<string?> action)
+    {
+        if (action != null)
+            _action = action;
+        //var initialValue = await GetStorageValueAsync<string?>(new(StorageCommand.Get));
+        var jsEventMethod = _storageOptions.StorageType switch
+        {
+            BrowserStorageType.Cookies => CookieStorageOperators[StorageCommand.Listener],
+            BrowserStorageType.Local => LocalStorageOperators[StorageCommand.Listener],
+            _ => throw new NotImplementedException()
+        };
+        // Create a reference to the current object
+        var reference = DotNetObjectReference.Create(this);
+        // Create a task that will call the JS "eventListener" function when run.
+        // That function looks for the [JSInvokable] dotnet method "OnStorageUpdated".
+        await _jsRuntime.InvokeVoidAsync(jsEventMethod, reference);
+    }
+
+    // This method will be called when a key-value changes.
+    [JSInvokable]
+    public Task OnStorageUpdated(string? changedKey)
+    {
+        // Handle the changes by invoking the action, e.g. get the new value
+        _action?.Invoke(changedKey);
+        return Task.CompletedTask;
     }
 
     public async ValueTask InvokeVoidAsync(LocalStorage localStorage, CancellationToken cancellationToken = default)
     {
         if (localStorage == null)
             throw new ArgumentNullException(nameof(localStorage));
-        if (StorageOptions.StorageType == BrowserStorageType.Memory)
+        if (_storageOptions.StorageType == BrowserStorageType.Memory)
             await _memoryStorage.InvokeVoidAsync(localStorage, cancellationToken);
         else
             await SetStorageAsync(localStorage, cancellationToken);
@@ -39,7 +69,7 @@ public class BrowserStorageHandler : IStorageHandler
     {
         if (localStorage == null)
             throw new ArgumentNullException(nameof(localStorage));
-        var result = StorageOptions.StorageType == BrowserStorageType.Memory ?
+        var result = _storageOptions.StorageType == BrowserStorageType.Memory ?
             await _memoryStorage.InvokeAsync<T>(localStorage, cancellationToken) :
             await GetStorageValueAsync<T>(localStorage, cancellationToken);
         return result;
@@ -47,7 +77,7 @@ public class BrowserStorageHandler : IStorageHandler
 
     private async ValueTask<T> GetStorageValueAsync<T>(LocalStorage localStorage, CancellationToken cancellationToken = default)
     {
-        var method = StorageOptions.StorageType switch
+        var method = _storageOptions.StorageType switch
         {
             BrowserStorageType.Cookies => CookieStorageOperators[localStorage.Command],
             BrowserStorageType.Local => LocalStorageOperators[localStorage.Command],
@@ -59,7 +89,7 @@ public class BrowserStorageHandler : IStorageHandler
 
     private async ValueTask SetStorageAsync(LocalStorage localStorage, CancellationToken cancellationToken = default)
     {
-        var method = StorageOptions.StorageType switch
+        var method = _storageOptions.StorageType switch
         {
             BrowserStorageType.Cookies => CookieStorageOperators[localStorage.Command],
             BrowserStorageType.Local => LocalStorageOperators[localStorage.Command],
@@ -74,6 +104,7 @@ public class BrowserStorageHandler : IStorageHandler
             {StorageCommand.Set, "localStorage.setItem"},
             {StorageCommand.Delete, "localStorage.removeItem"},
             {StorageCommand.Clear, "localStorage.clear"},
+            {StorageCommand.Listener, "localStorage.eventListener"},
         };
 
     private static readonly IDictionary<StorageCommand, string> CookieStorageOperators = new Dictionary<StorageCommand, string>
@@ -82,6 +113,7 @@ public class BrowserStorageHandler : IStorageHandler
             {StorageCommand.Set, "cookieStorage.set"},
             {StorageCommand.Delete, "cookieStorage.delete"},
             {StorageCommand.Clear, "cookieStorage.clear"},
+            {StorageCommand.Listener, "cookieStorage.eventListener"},
         };
 }
 

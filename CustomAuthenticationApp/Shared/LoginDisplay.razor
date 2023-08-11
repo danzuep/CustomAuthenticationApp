@@ -1,4 +1,5 @@
-﻿@inject NavigationManager navigationManager
+﻿@using System.Security.Claims;
+@inject NavigationManager navigationManager
 @inject IAuthenticationService authenticationService
 @inject ILogger<LoginDisplay> logger
 
@@ -14,8 +15,16 @@
 </AuthorizeView>
 
 @code {
+    // This property is inherited from CascadingAuthenticationState.
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationState { get; set; }
+
+    // These properties are inherited from App.razor
+    [CascadingParameter]
+    private ClaimsPrincipal? User { get; set; }
+
+    [CascadingParameter]
+    private string? Username { get; set; }
 
     private static readonly string buttonClass = "btn btn-link navbar-item";
 
@@ -36,6 +45,8 @@
             var identity = (await authenticationState).User.Identity;
             logger.LogDebug($"User {identity?.Name} is logging out.");
         }
+        else
+            logger.LogDebug($"User {Username} is logging out.");
         await authenticationService.LogoutAsync();
         navigationManager.NavigateTo("authentication/logout");
     }

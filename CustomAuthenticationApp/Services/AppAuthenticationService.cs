@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using CustomAuthenticationApp.Abstractions;
 using CustomAuthenticationApp.Models;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using System.Security.Claims;
 
 internal sealed class AppAuthenticationService : IAuthenticationService
 {

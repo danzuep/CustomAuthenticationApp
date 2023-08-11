@@ -36,8 +36,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AuthenticationStateProvider>(s => s.GetRequiredService<AppAuthenticationStateProvider>());
         services.AddScoped<IAuthenticationService, AppAuthenticationService>();
         services.AddMemoryCache();
+        services.AddScoped<IStorageHandler, StoreMemoryHandler>();
+        services.AddScoped<IStoreBrowserHandler, StoreBrowserHandler>();
         services.AddScoped<IStorageAccessor, StorageAccessor>();
-        services.AddScoped<IStorageHandler, BrowserStorageHandler>();
+        services.AddScoped<IDimensionService, DimensionService>();
+        services.AddScoped<IDownloadService, DownloadService>();
         return services;
     }
 }

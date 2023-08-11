@@ -1,6 +1,7 @@
-﻿using CustomAuthenticationApp.Abstractions;
+﻿namespace CustomAuthenticationApp.Services;
 
-namespace CustomAuthenticationApp.Services;
+using CustomAuthenticationApp.Abstractions;
+using System.Text.Json;
 
 public class StorageAccessor : IStorageAccessor
 {
@@ -9,8 +10,13 @@ public class StorageAccessor : IStorageAccessor
 
     public StorageAccessor(IStorageHandler storageHandler, ILogger<StorageAccessor> logger)
     {
-        _storageHandler = storageHandler;
         _logger = logger;
+        _storageHandler = storageHandler;
+    }
+
+    public void SetOptions(BrowserStorageAccessorOptions? options)
+    {
+        _storageHandler.SetOptions(options);
     }
 
     internal const string Token = "token";
@@ -18,7 +24,7 @@ public class StorageAccessor : IStorageAccessor
     public async Task<string?> GetTokenValueAsync(CancellationToken cancellationToken = default) =>
         await GetValueAsync<string?>(Token, cancellationToken);
 
-    public Task SetTokenValueAsync<T>(T? value, DateTime? expiry = null, CancellationToken cancellationToken = default) =>
+    public Task SetTokenValueAsync(string? value, DateTime? expiry = null, CancellationToken cancellationToken = default) =>
         SetValueAsync(Token, value, expiry ?? DateTime.UtcNow.AddDays(1), null, cancellationToken);
 
     private static readonly LocalStorage _get = new(StorageCommand.Get, "key");
@@ -28,7 +34,11 @@ public class StorageAccessor : IStorageAccessor
         storage.Args[0] = key;
         try
         {
-            var result = await _storageHandler.InvokeAsync<T>(storage, cancellationToken);
+            T? result;
+            if (typeof(T) != typeof(string) && (await _storageHandler.InvokeAsync<string>(storage, cancellationToken)) is string value)
+                result = JsonSerializer.Deserialize<T>(value);
+            else
+                result = await _storageHandler.InvokeAsync<T>(storage, cancellationToken);
             return result;
         }
         catch (Exception ex)
@@ -43,7 +53,7 @@ public class StorageAccessor : IStorageAccessor
     {
         var storage = _set;
         storage.Args[0] = key;
-        storage.Args[1] = value;
+        storage.Args[1] = value == null || value is string ? value : JsonSerializer.Serialize(value);
         storage.Args[2] = absoluteExpiry;
         if (absoluteExpiry == null)
         {
@@ -68,6 +78,7 @@ public class StorageAccessor : IStorageAccessor
         storage.Args[0] = key;
         await _storageHandler.InvokeVoidAsync(storage, cancellationToken);
     }
+
     public async Task RemoveTokenAsync(CancellationToken cancellationToken = default)
     {
         var storage = _delete;
@@ -91,5 +102,6 @@ public enum StorageCommand
     Get,
     Set,
     Delete,
-    Clear
+    Clear,
+    Listener
 }

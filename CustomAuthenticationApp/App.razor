@@ -1,4 +1,6 @@
-﻿<CascadingAuthenticationState>
+﻿@using System.Security.Claims;
+
+<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
@@ -23,3 +25,23 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    // This property is inherited from CascadingAuthenticationState.
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    // These properties will be accessible to ancestor components.
+    public ClaimsPrincipal? User { get; private set; }
+    public string? Username { get; private set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationState is not null)
+        {
+            var authState = await authenticationState;
+            User = authState?.User;
+            Username = User?.Identity?.Name;
+        }
+    }
+}

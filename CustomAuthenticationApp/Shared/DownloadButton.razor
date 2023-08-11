@@ -1,0 +1,35 @@
+﻿@inject IDownloadService DownloadService
+
+<button @onclick="@OnClick" class="btn btn-primary" hidden="@_busy">
+    <i class="oi oi-data-transfer-download"></i>
+    Download
+</button>
+<button @onclick="@Cancel" class="btn btn-secondary" hidden="@(!_busy)">
+    <i class="oi oi-circle-x"></i>
+    Cancel
+</button>
+
+@code {
+    /// <summary>
+    /// Gets or sets the download URL.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Uri DownloadUrl { get; set; } = null!;
+
+    private CancellationTokenSource _cts = new();
+
+    private bool _busy;
+
+    private async Task OnClick()
+    {
+        _busy = true;
+        await DownloadService.TryDownloadFileFromUrl(DownloadUrl, _cts.Token).ConfigureAwait(false);
+        _busy = false;
+    }
+
+    public void Cancel()
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
+}

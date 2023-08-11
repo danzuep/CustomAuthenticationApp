@@ -1,18 +1,30 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Reflection;
+@inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
     <main>
-        <div class="top-row px-4">
-            @*navbar-nav*@
-            <LoginDisplay />
+        @*navbar-nav*@
+        <div class="top-row px-4" style="display: flex;">
+            <div style="flex: 1;">
+                @version
+            </div>
+            <div style="flex: 1; text-align: right;">
+                <LoginDisplay />
+            </div>
         </div>
 
-        <article class="content px-4">
-            @Body
-        </article>
+        <article class="content px-4">@Body</article>
     </main>
 </div>
+
+@code{
+    private string? version;
+    private string? informationalVersion;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        informationalVersion = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        version = string.IsNullOrEmpty(informationalVersion) ? string.Empty : $"v{informationalVersion}";
+    }
+}

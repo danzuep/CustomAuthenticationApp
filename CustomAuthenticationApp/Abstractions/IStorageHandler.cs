@@ -8,4 +8,9 @@ namespace CustomAuthenticationApp.Abstractions
         ValueTask InvokeVoidAsync(LocalStorage localStorage, CancellationToken cancellationToken = default);
         void SetOptions(StorageAccessorOptions? options);
     }
+
+    public interface IStoreBrowserHandler : IStorageHandler
+    {
+        Task StartAsync(Action<string?> action);
+    }
 }

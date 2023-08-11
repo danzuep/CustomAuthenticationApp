@@ -1,14 +1,14 @@
 ﻿namespace CustomAuthenticationApp.Services;
 
+using CustomAuthenticationApp.Abstractions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
-using CustomAuthenticationApp.Abstractions;
 
-public class MemoryStorageHandler : IStorageHandler, IDisposable
+public class StoreMemoryHandler : IStorageHandler, IDisposable
 {
     private readonly IMemoryCache _memoryCache;
 
-    public MemoryStorageHandler(IMemoryCache memoryCache)
+    public StoreMemoryHandler(IMemoryCache memoryCache)
     {
         _memoryCache = memoryCache;
     }
