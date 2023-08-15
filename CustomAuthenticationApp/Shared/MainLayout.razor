@@ -3,13 +3,12 @@
 
 <div class="page">
     <main>
-        @*navbar-nav*@
         <div class="top-row px-4" style="display: flex;">
-            <div style="flex: 1;">
-                @version
+            <div style="flex: 1;" class="text-muted" data-toggle="tooltip" title="@informationalVersion">
+                @displayVersion
             </div>
             <div style="flex: 1; text-align: right;">
-                <LoginDisplay />
+                <NavbarDisplay />
             </div>
         </div>
 
@@ -17,14 +16,17 @@
     </main>
 </div>
 
-@code{
-    private string? version;
+@code {
     private string? informationalVersion;
+    private string? displayVersion;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        informationalVersion = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        version = string.IsNullOrEmpty(informationalVersion) ? string.Empty : $"v{informationalVersion}";
+        var assembly = Assembly.GetExecutingAssembly();
+        informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion ?? assembly.GetName().Version?.ToString() ?? "0.1.0";
+        var assemblyVersion = informationalVersion.Split('+')[0];
+        displayVersion = $"v{assemblyVersion}";
     }
 }

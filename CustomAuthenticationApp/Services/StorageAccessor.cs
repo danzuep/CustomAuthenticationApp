@@ -5,10 +5,10 @@ using System.Text.Json;
 
 public class StorageAccessor : IStorageAccessor
 {
-    private readonly IStorageHandler _storageHandler;
+    private readonly IStoreBrowserHandler _storageHandler;
     private readonly ILogger<StorageAccessor> _logger;
 
-    public StorageAccessor(IStorageHandler storageHandler, ILogger<StorageAccessor> logger)
+    public StorageAccessor(IStoreBrowserHandler storageHandler, ILogger<StorageAccessor> logger)
     {
         _logger = logger;
         _storageHandler = storageHandler;
