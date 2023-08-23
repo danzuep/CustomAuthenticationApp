@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using CustomAuthenticationApp.Extensions;
 @layout MainLayout
 @attribute [AllowAnonymous]
 @inject IStorageAccessor storage
@@ -19,7 +20,7 @@
         <button class=@buttonClass @onclick=@OnClickClear>Clear Storage</button>
         <select @bind="SelectedStorageType">
             <option value="">Select a storage type</option>
-            @foreach (var storageType in Enum.GetValues(typeof(StorageType)))
+            @foreach (var storageType in EnumHelper<StorageType>.AllValues.Value)
             {
                 <option value="@storageType">@storageType</option>
             }
