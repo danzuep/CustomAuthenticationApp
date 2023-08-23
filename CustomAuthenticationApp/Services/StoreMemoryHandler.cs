@@ -22,7 +22,7 @@ public class StoreMemoryHandler : IStorageHandler, IDisposable
             StorageOptions = options;
     }
 
-    public ValueTask<T> InvokeAsync<T>(LocalStorage localStorage, CancellationToken cancellationToken = default)
+    public ValueTask<T> InvokeAsync<T>(BrowserStorage localStorage, CancellationToken cancellationToken = default)
     {
         if (localStorage == null)
             throw new ArgumentNullException(nameof(localStorage));
@@ -30,7 +30,7 @@ public class StoreMemoryHandler : IStorageHandler, IDisposable
         return ValueTask.FromResult(result);
     }
 
-    public ValueTask InvokeVoidAsync(LocalStorage localStorage, CancellationToken cancellationToken = default)
+    public ValueTask InvokeVoidAsync(BrowserStorage localStorage, CancellationToken cancellationToken = default)
     {
         if (localStorage == null)
             throw new ArgumentNullException(nameof(localStorage));
@@ -38,7 +38,7 @@ public class StoreMemoryHandler : IStorageHandler, IDisposable
         return ValueTask.CompletedTask;
     }
 
-    private T GetMemoryCacheValue<T>(LocalStorage localStorage)
+    private T GetMemoryCacheValue<T>(BrowserStorage localStorage)
     {
         var key = localStorage.Args[0];
         if (localStorage.Args == null)
@@ -56,7 +56,7 @@ public class StoreMemoryHandler : IStorageHandler, IDisposable
     }
 
     private CancellationTokenSource _resetCacheToken = new();
-    private void SetMemoryCache(LocalStorage localStorage)
+    private void SetMemoryCache(BrowserStorage localStorage)
     {
         if (localStorage.Command == StorageCommand.Clear)
         {

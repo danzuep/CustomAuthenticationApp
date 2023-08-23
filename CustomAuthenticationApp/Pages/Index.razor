@@ -17,6 +17,13 @@
         <button class=@buttonClass @onclick=@OnClickSet>Set Token</button>
         <button class=@buttonClass @onclick=@OnClickDelete>Delete Token</button>
         <button class=@buttonClass @onclick=@OnClickClear>Clear Storage</button>
+        <select @bind="SelectedStorageType">
+            <option value="">Select a storage type</option>
+            @foreach (var storageType in Enum.GetValues(typeof(StorageType)))
+            {
+                <option value="@storageType">@storageType</option>
+            }
+        </select>
     </div>
 </div>
 
@@ -24,7 +31,22 @@
 
 <Profile />
 
+<br />
+
+<FetchData />
+
 @code {
+    private StorageType _selectedStorageType;
+    private StorageType SelectedStorageType
+    {
+        get => _selectedStorageType;
+        set
+        {
+            _selectedStorageType = value;
+            storage.SetOptions(_selectedStorageType);
+        }
+    }
+
     private static readonly string buttonClass = "btn btn-primary";
 
     private string? Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";

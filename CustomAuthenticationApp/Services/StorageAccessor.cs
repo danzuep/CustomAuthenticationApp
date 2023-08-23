@@ -14,6 +14,11 @@ public class StorageAccessor : IStorageAccessor
         _storageHandler = storageHandler;
     }
 
+    public void SetOptions(StorageType storageType, TimeSpan? timeSpan = null)
+    {
+        _storageHandler.SetOptions(storageType, timeSpan);
+    }
+
     public void SetOptions(BrowserStorageAccessorOptions? options)
     {
         _storageHandler.SetOptions(options);
@@ -27,7 +32,7 @@ public class StorageAccessor : IStorageAccessor
     public Task SetTokenValueAsync(string? value, DateTime? expiry = null, CancellationToken cancellationToken = default) =>
         SetValueAsync(Token, value, expiry ?? DateTime.UtcNow.AddDays(1), null, cancellationToken);
 
-    private static readonly LocalStorage _get = new(StorageCommand.Get, "key");
+    private static readonly BrowserStorage _get = new(StorageCommand.Get, "key");
     public async Task<T?> GetValueAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         var storage = _get;
@@ -48,7 +53,7 @@ public class StorageAccessor : IStorageAccessor
         return default;
     }
 
-    private static readonly LocalStorage _set = new(StorageCommand.Set, "key", "value", "absoluteExpiryMs", "relativeExpiryMs");
+    private static readonly BrowserStorage _set = new(StorageCommand.Set, "key", "value", "absoluteExpiryMs", "relativeExpiryMs");
     public async Task SetValueAsync<T>(string key, T? value, DateTime? absoluteExpiry = null, TimeSpan? relativeExpiry = null, CancellationToken cancellationToken = default)
     {
         var storage = _set;
@@ -71,7 +76,7 @@ public class StorageAccessor : IStorageAccessor
         }
     }
 
-    private static readonly LocalStorage _delete = new(StorageCommand.Delete, "key");
+    private static readonly BrowserStorage _delete = new(StorageCommand.Delete, "key");
     public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         var storage = _delete;
@@ -86,7 +91,7 @@ public class StorageAccessor : IStorageAccessor
         await _storageHandler.InvokeVoidAsync(storage, cancellationToken);
     }
 
-    private static readonly LocalStorage _clear = new(StorageCommand.Clear);
+    private static readonly BrowserStorage _clear = new(StorageCommand.Clear);
     public async Task ClearAllAsync(CancellationToken cancellationToken = default)
     {
         await _storageHandler.InvokeVoidAsync(_clear, cancellationToken);
@@ -95,7 +100,7 @@ public class StorageAccessor : IStorageAccessor
 
 public record StorageAccessorOptions(TimeSpan DefaultExpiration);
 
-public record LocalStorage(StorageCommand Command, params object?[] Args);
+public record BrowserStorage(StorageCommand Command, params object?[] Args);
 
 public enum StorageCommand
 {

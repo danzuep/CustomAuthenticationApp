@@ -16,8 +16,21 @@ public class StoreBrowserHandler : IStoreBrowserHandler
         _memoryStorage = memoryStorage;
     }
 
+    //private Lazy<IStorageHandler> _storage =>
+    //    new Lazy<IStorageHandler>(() => _storageOptions.StorageType switch
+    //    {
+    //        StorageType.Local => new StoreLocalHandler(_jsRuntime),
+    //        StorageType.Cookies => new StoreCookiesHandler(_jsRuntime),
+    //        _ => new StoreMemoryHandler(_memoryCache)
+    //    });
+
     private BrowserStorageAccessorOptions _storageOptions =
-        new(BrowserStorageType.Cookies, TimeSpan.FromDays(1));
+        new(StorageType.Cookies, TimeSpan.FromDays(1));
+
+    public void SetOptions(StorageType storageType, TimeSpan? timeSpan = null)
+    {
+        _storageOptions = new(storageType, timeSpan ?? _storageOptions.DefaultExpiration);
+    }
 
     public void SetOptions(StorageAccessorOptions? options)
     {
@@ -35,8 +48,8 @@ public class StoreBrowserHandler : IStoreBrowserHandler
         //var initialValue = await GetStorageValueAsync<string?>(new(StorageCommand.Get));
         var jsEventMethod = _storageOptions.StorageType switch
         {
-            BrowserStorageType.Cookies => CookieStorageOperators[StorageCommand.Listener],
-            BrowserStorageType.Local => LocalStorageOperators[StorageCommand.Listener],
+            StorageType.Cookies => CookieStorageOperators[StorageCommand.Listener],
+            StorageType.Local => LocalStorageOperators[StorageCommand.Listener],
             _ => throw new NotImplementedException()
         };
         // Create a reference to the current object
@@ -55,44 +68,44 @@ public class StoreBrowserHandler : IStoreBrowserHandler
         return Task.CompletedTask;
     }
 
-    public async ValueTask InvokeVoidAsync(LocalStorage localStorage, CancellationToken cancellationToken = default)
+    public async ValueTask InvokeVoidAsync(BrowserStorage localStorage, CancellationToken cancellationToken = default)
     {
         if (localStorage == null)
             throw new ArgumentNullException(nameof(localStorage));
-        if (_storageOptions.StorageType == BrowserStorageType.Memory)
+        if (_storageOptions.StorageType == StorageType.Memory)
             await _memoryStorage.InvokeVoidAsync(localStorage, cancellationToken);
         else
             await SetStorageAsync(localStorage, cancellationToken);
     }
 
-    public async ValueTask<T> InvokeAsync<T>(LocalStorage localStorage, CancellationToken cancellationToken = default)
+    public async ValueTask<T> InvokeAsync<T>(BrowserStorage localStorage, CancellationToken cancellationToken = default)
     {
         if (localStorage == null)
             throw new ArgumentNullException(nameof(localStorage));
-        var result = _storageOptions.StorageType == BrowserStorageType.Memory ?
+        var result = _storageOptions.StorageType == StorageType.Memory ?
             await _memoryStorage.InvokeAsync<T>(localStorage, cancellationToken) :
             await GetStorageValueAsync<T>(localStorage, cancellationToken);
         return result;
     }
 
-    private async ValueTask<T> GetStorageValueAsync<T>(LocalStorage localStorage, CancellationToken cancellationToken = default)
+    private async ValueTask<T> GetStorageValueAsync<T>(BrowserStorage localStorage, CancellationToken cancellationToken = default)
     {
         var method = _storageOptions.StorageType switch
         {
-            BrowserStorageType.Cookies => CookieStorageOperators[localStorage.Command],
-            BrowserStorageType.Local => LocalStorageOperators[localStorage.Command],
+            StorageType.Cookies => CookieStorageOperators[localStorage.Command],
+            StorageType.Local => LocalStorageOperators[localStorage.Command],
             _ => throw new NotImplementedException()
         };
         var result = await _jsRuntime.InvokeAsync<T>(method, cancellationToken, localStorage.Args);
         return result;
     }
 
-    private async ValueTask SetStorageAsync(LocalStorage localStorage, CancellationToken cancellationToken = default)
+    private async ValueTask SetStorageAsync(BrowserStorage localStorage, CancellationToken cancellationToken = default)
     {
         var method = _storageOptions.StorageType switch
         {
-            BrowserStorageType.Cookies => CookieStorageOperators[localStorage.Command],
-            BrowserStorageType.Local => LocalStorageOperators[localStorage.Command],
+            StorageType.Cookies => CookieStorageOperators[localStorage.Command],
+            StorageType.Local => LocalStorageOperators[localStorage.Command],
             _ => throw new NotImplementedException()
         };
         await _jsRuntime.InvokeVoidAsync(method, cancellationToken, localStorage.Args);
@@ -117,9 +130,9 @@ public class StoreBrowserHandler : IStoreBrowserHandler
         };
 }
 
-public record BrowserStorageAccessorOptions(BrowserStorageType StorageType, TimeSpan DefaultExpiration) : StorageAccessorOptions(DefaultExpiration);
+public record BrowserStorageAccessorOptions(StorageType StorageType, TimeSpan DefaultExpiration) : StorageAccessorOptions(DefaultExpiration);
 
-public enum BrowserStorageType
+public enum StorageType
 {
     Memory,
     Cookies,

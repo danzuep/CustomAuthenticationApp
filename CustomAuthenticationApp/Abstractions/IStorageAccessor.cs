@@ -12,5 +12,6 @@ namespace CustomAuthenticationApp.Abstractions
         Task RemoveTokenAsync(CancellationToken cancellationToken = default);
         Task ClearAllAsync(CancellationToken cancellationToken = default);
         void SetOptions(BrowserStorageAccessorOptions? options);
+        void SetOptions(StorageType storageType, TimeSpan? timeSpan = null);
     }
 }
