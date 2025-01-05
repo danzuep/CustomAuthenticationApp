@@ -1,6 +1,4 @@
-﻿using System.Runtime.Serialization;
-
-namespace CustomAuthenticationApp.Models
+﻿namespace CustomAuthenticationApp.Models
 {
     /// <summary>
     /// This exception class is thrown by the application if it encounters an unrecoverable error.
@@ -23,11 +21,6 @@ namespace CustomAuthenticationApp.Models
 
         /// <inheritdoc />
         public AuthorizationException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        /// <inheritdoc />
-        protected AuthorizationException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
 
