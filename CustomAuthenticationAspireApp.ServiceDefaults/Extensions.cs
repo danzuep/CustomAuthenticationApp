@@ -1,9 +1,13 @@
+using CustomAuthenticationAspireApp.ServiceDefaults.Security;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -37,6 +41,46 @@ public static class Extensions
         // {
         //     options.AllowedSchemes = ["https"];
         // });
+
+        return builder;
+    }
+
+    private static void AddAuthenticationAuthorization(this IServiceCollection services)
+    {
+        // Add authentication
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = NegotiateDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = BasicAuthenticationHandler.Name; // browser login popup
+                options.DefaultForbidScheme = BasicAuthenticationHandler.Name;
+                options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/scalar/v1"; // Redirect to OpenAPI UI
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(30); // Cookie expiration
+                options.SlidingExpiration = true; // Reset expiration time on activity
+            })
+            .AddJwtBearer()
+            .AddNegotiate() // Adds Negotiate (NTLM/Kerberos)
+            .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>(BasicAuthenticationHandler.Name, null);
+
+        // Add authorization
+        services.AddAuthorization(options =>
+        {
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(BasicAuthenticationHandler.Name, NegotiateDefaults.AuthenticationScheme)
+                .Build();
+        });
+
+        // Add service dependencies
+        services.AddSingleton<IBasicAuthenticationService, TestAuthenticationService>();
+    }
+
+    public static TBuilder AddAuthenticationAuthorizationServices<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddAuthenticationAuthorization();
 
         return builder;
     }

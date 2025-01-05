@@ -11,38 +11,33 @@ builder.Services.AddProblemDetails();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Add authentication and authorization
+builder.AddAuthenticationAuthorizationServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-app.UseExceptionHandler();
-
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
-
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
-
-app.MapGet("/weatherforecast", () =>
+else
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    app.UseExceptionHandler();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/hello", static () => "Hello!")
+.WithName("GetHello")
+.AllowAnonymous();
+
+app.MapGet("/hello/{name}", static (string name) => $"Hello {name}!")
+.WithName("GetHelloName");
 
 app.MapDefaultEndpoints();
 
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+await app.RunAsync();

@@ -15,4 +15,8 @@
     <PackageReference Include="Scalar.AspNetCore" Version="1.2.*" />
   </ItemGroup>
 
+  <!--<ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Net.Security.UseManagedNtlm" Value="true" />
+  </ItemGroup>-->
+
 </Project>
